@@ -14,6 +14,7 @@ add_compile_options(-stdlib=libc++)
 add_link_options(-stdlib=libc++)
 
 find_package(Vulkan REQUIRED)
+find_package(glfw3 REQUIRED)
 
 # C++20 std module
 set(LIBCXX_MODULE_DIR "/usr/lib/llvm-20/share/libc++/v1")
@@ -50,7 +51,7 @@ target_sources(hello_triangle_app PUBLIC
     BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}
     FILES hello_triangle_app.cppm
 )
-target_link_libraries(hello_triangle_app PUBLIC vulkan_module)
+target_link_libraries(hello_triangle_app PUBLIC vulkan_module glfw)
 
 # Executable
 add_executable(${PROJECT_NAME} main.cpp)

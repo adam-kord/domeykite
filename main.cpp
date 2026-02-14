@@ -4,8 +4,8 @@ import std;
 int main() {
     try {
         HelloTriangleApp app;
-        app.run();
-    } catch (const std::exception& e) {
+        app.Run();
+    } catch (const std::exception &e) {
         std::cerr << e.what() << std::endl;
         return 1;
     }
