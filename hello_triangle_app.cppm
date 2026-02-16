@@ -29,6 +29,7 @@ export class HelloTriangleApp {
     void InitVulkan() {
         CreateInstance();
         SetupDebugMessenger();
+        PickPhysicalDevice();
     }
 
     void CreateInstance() {
@@ -59,8 +60,7 @@ export class HelloTriangleApp {
         }
 
         const auto extensions = GetRequiredExtensions();
-
-        vk::InstanceCreateInfo createInfo{
+        const vk::InstanceCreateInfo createInfo{
             .pApplicationInfo = &app_info,
             .enabledLayerCount = static_cast<uint32_t>(required_layers.size()),
             .ppEnabledLayerNames = required_layers.data(),
@@ -118,6 +118,46 @@ export class HelloTriangleApp {
         debug_messenger_ = instance_.createDebugUtilsMessengerEXT(create_info);
     }
 
+    void PickPhysicalDevice() {
+        const auto physical_devices = instance_.enumeratePhysicalDevices();
+
+        const auto physical_device_it =
+            std::ranges::find_if(physical_devices, [&](const auto &physical_device) -> bool {
+                const auto queue_family_properties = physical_device.getQueueFamilyProperties();
+                bool is_suitable = physical_device.getProperties().apiVersion >= vk::ApiVersion13;
+
+                const auto queue_family_property_it =
+                    std::ranges::find_if(queue_family_properties, [](const auto &queue_family_property) -> bool {
+                        return (queue_family_property.queueFlags & vk::QueueFlagBits::eGraphics) != vk::QueueFlags{0};
+                    });
+
+                is_suitable = is_suitable && (queue_family_property_it != queue_family_properties.end());
+
+                const auto extension_properties = physical_device.enumerateDeviceExtensionProperties();
+                bool found = true;
+                for (const auto &extension : extension_properties) {
+                    const auto extension_iter =
+                        std::ranges::find_if(extension_properties, [extension](const auto &extension_property) -> bool {
+                            return std::strcmp(extension_property.extensionName, extension.extensionName) == 0;
+                        });
+                    found = found && (extension_iter != extension_properties.end());
+                }
+
+                is_suitable = is_suitable && found;
+
+                if (is_suitable) {
+                    std::cout << "Selected GPU: " << physical_device.getProperties().deviceName << std::endl;
+                    physical_device_ = physical_device;
+                }
+
+                return is_suitable;
+            });
+
+        if (physical_device_it == physical_devices.end()) {
+            throw std::runtime_error("Failed to find a suitable GPU.");
+        }
+    }
+
     void MainLoop() {
         while (!glfwWindowShouldClose(window_)) {
             glfwPollEvents();
@@ -151,4 +191,5 @@ export class HelloTriangleApp {
     vk::raii::Context context_;
     vk::raii::Instance instance_{nullptr};
     vk::raii::DebugUtilsMessengerEXT debug_messenger_{nullptr};
+    vk::raii::PhysicalDevice physical_device_{nullptr};
 };
