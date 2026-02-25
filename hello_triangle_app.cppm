@@ -30,6 +30,7 @@ export class HelloTriangleApp {
         CreateInstance();
         SetupDebugMessenger();
         PickPhysicalDevice();
+        CreateLogicalDevice();
     }
 
     void CreateInstance() {
@@ -158,6 +159,42 @@ export class HelloTriangleApp {
         }
     }
 
+    void CreateLogicalDevice() {
+        const auto graphics_index = findQueueFamilies(physical_device_);
+        const auto queue_priority = 0.5f;
+
+        const vk::DeviceQueueCreateInfo device_queue_create_info{
+            .queueFamilyIndex = graphics_index, .queueCount = 1, .pQueuePriorities = &queue_priority};
+
+        const vk::PhysicalDeviceFeatures device_features{};
+
+        const vk::StructureChain<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan13Features,
+                                 vk::PhysicalDeviceExtendedDynamicStateFeaturesEXT>
+            device_features_chain{{}, {.dynamicRendering = true}, {.extendedDynamicState = true}};
+
+        const std::vector<const char *> device_extensions = {vk::KHRSwapchainExtensionName};
+
+        const vk::DeviceCreateInfo create_info{.pNext = &device_features_chain.get<vk::PhysicalDeviceFeatures2>(),
+                                               .queueCreateInfoCount = 1,
+                                               .pQueueCreateInfos = &device_queue_create_info,
+                                               .enabledExtensionCount = static_cast<uint32_t>(device_extensions.size()),
+                                               .ppEnabledExtensionNames = device_extensions.data()};
+
+        device_ = vk::raii::Device{physical_device_, create_info};
+        graphics_queue_ = vk::raii::Queue{device_, graphics_index, 0};
+    }
+
+    uint32_t findQueueFamilies(const vk::raii::PhysicalDevice &physical_device) {
+        const auto queue_family_properties = physical_device.getQueueFamilyProperties();
+        for (uint32_t i = 0; i < queue_family_properties.size(); i++) {
+            if ((queue_family_properties[i].queueFlags & vk::QueueFlagBits::eGraphics) != vk::QueueFlags{0}) {
+                return i;
+            }
+        }
+
+        throw std::runtime_error("Failed to find a graphics queue family.");
+    }
+
     void MainLoop() {
         while (!glfwWindowShouldClose(window_)) {
             glfwPollEvents();
@@ -192,4 +229,6 @@ export class HelloTriangleApp {
     vk::raii::Instance instance_{nullptr};
     vk::raii::DebugUtilsMessengerEXT debug_messenger_{nullptr};
     vk::raii::PhysicalDevice physical_device_{nullptr};
+    vk::raii::Device device_{nullptr};
+    vk::raii::Queue graphics_queue_{nullptr};
 };
